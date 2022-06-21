@@ -1,0 +1,16 @@
+cmake_minimum_required(VERSION 3.22)
+project(Plainscape)
+set(CMAKE_CXX_STANDARD 11)
+set(VENDOR_DIR ${PROJECT_SOURCE_DIR}/vendor)
+
+set(SDL2_DIR ${VENDOR_DIR}/SDL2-2.0.22/x86_64-w64-mingw32/lib/cmake/SDL2)
+find_package(SDL2 REQUIRED)
+include_directories(${VENDOR_DIR}/SDL2-2.0.22/x86_64-w64-mingw32/include/SDL2)
+include_directories(${VENDOR_DIR}/SDL2_ttf-2.0.18/x86_64-w64-mingw32/include/SDL2)
+include_directories(${VENDOR_DIR}/glew-2.1.0/include)
+
+add_executable(Plainscape src/main.cpp)
+target_link_libraries(Plainscape ${PROJECT_SOURCE_DIR}/cmake-build-debug/SDL2.dll)
+target_link_libraries(Plainscape ${PROJECT_SOURCE_DIR}/cmake-build-debug/SDL2_ttf.dll)
+target_link_libraries(Plainscape ${PROJECT_SOURCE_DIR}/cmake-build-debug/glew32.dll)
+add_definitions(-DSDL_MAIN_HANDLED)

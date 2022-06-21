@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CMakeWorkspace" PROJECT_DIR="$PROJECT_DIR$" />
+  <component name="CidrRootsConfiguration">
+    <sourceRoots>
+      <file path="$PROJECT_DIR$/src" />
+    </sourceRoots>
+    <excludeRoots>
+      <file path="$PROJECT_DIR$/SDL_ttf" />
+      <file path="$PROJECT_DIR$/vendor/SDL2-2.0.22" />
+      <file path="$PROJECT_DIR$/vendor/SDL2_ttf-2.0.18" />
+      <file path="$PROJECT_DIR$/vendor/glew-2.1.0" />
+    </excludeRoots>
+  </component>
+</project>
