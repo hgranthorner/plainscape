@@ -24,9 +24,4 @@ target_include_directories(${PROJECT_NAME}
         PUBLIC
         vendor/glfw-3.3.8/include
         vendor/glad/include
-        vendor/glm-0.9.9.8/glm
-        vendor/glm-0.9.9.8/glm/detail
-        vendor/glm-0.9.9.8/glm/ext
-        vendor/glm-0.9.9.8/glm/gtc
-        vendor/glm-0.9.9.8/glm/gtx
-        vendor/glm-0.9.9.8/glm/simd)
+        vendor/glm-0.9.9.8)
