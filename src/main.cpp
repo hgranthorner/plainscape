@@ -1,9 +1,24 @@
+#define GLM_FORCE_RADIANS
+
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <glm/glm.hpp>
+#include <glm/mat4x4.hpp>
+#include <glm/ext/matrix_clip_space.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/transform.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/quaternion.hpp>
+#include <tuple>
+#include <optional>
 #include "glad/gl.h"
 #include "GLFW/glfw3.h"
 #include "Model.h"
+#include "VertexArray.h"
+
+bool show_test = true;
 
 void error_callback(int error, const char *description) {
 	fprintf(stderr, "Error: %s\n", description);
@@ -12,22 +27,29 @@ void error_callback(int error, const char *description) {
 static void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, GLFW_TRUE);
+
+	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
+		show_test = !show_test;
 }
 
-int init_opengl(GLFWwindow **window) {
+std::optional<std::tuple<int, int>> init_opengl(GLFWwindow **window) {
 	if (!glfwInit()) {
 		std::cerr << "Failed to init glfw!" << std::endl;
-		return 1;
+		return std::nullopt;
 	}
 
 	glfwSetErrorCallback(error_callback);
 
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
-	*window = glfwCreateWindow(640, 480, "My Title", NULL, NULL);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#ifdef __APPLE__
+	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // uncomment this statement to fix compilation on OS X
+#endif
+	*window = glfwCreateWindow(640, 480, "Smiley", NULL, NULL);
 	if (*window == nullptr) {
 		std::cerr << "Failed to create window!" << std::endl;
-		return 1;
+		return std::nullopt;
 	}
 
 	glfwMakeContextCurrent(*window);
@@ -35,7 +57,7 @@ int init_opengl(GLFWwindow **window) {
 	std::cout << "OpenGL version: " << version << std::endl;
 	if (version == 0) {
 		std::cerr << "Failed to initialize GLAD!" << std::endl;
-		return 1;
+		return std::nullopt;
 	}
 
 	glfwSwapInterval(1);
@@ -46,7 +68,9 @@ int init_opengl(GLFWwindow **window) {
 	glfwGetFramebufferSize(*window, &width, &height);
 	glViewport(0, 0, width, height);
 
-	return 0;
+	glEnable(GL_CULL_FACE);
+
+	return std::make_tuple(width, height);
 }
 
 GLuint compile_shader(const std::string &path, int shader_type) {
@@ -75,39 +99,32 @@ GLuint compile_shader(const std::string &path, int shader_type) {
 int main() {
 	GLFWwindow *window = nullptr;
 
-	if (init_opengl(&window) != 0) {
+	auto dims = init_opengl(&window);
+	if (!dims.has_value()) {
 		return 1;
 	}
 
-	float vertices[] = {
-			-0.5f, -0.5f, 0.0f,
-			0.5f, -0.5f, 0.0f,
-			-0.5f, 0.5f, 0.0f,
-			0.5f, 0.5f, 0.0f,
+	int width, height;
+	std::tie(width, height) = dims.value();
+
+	std::vector<glm::vec3> vertex_vec3s = {
+			glm::vec3(-0.5f, -0.5f, 0.0f),
+			glm::vec3(0.5f, -0.5f, 0.0f),
+			glm::vec3(-0.0f, 0.5f, 0.0f),
 	};
-
-	unsigned int indices[] = {
-			0, 1, 2,
-			1, 2, 3,
+	std::vector<unsigned int> index_vec3s = {
+			0, 1, 2
 	};
+	VertexArray va(vertex_vec3s, index_vec3s);
 
-	GLuint vertex_array;
-	glGenVertexArrays(1, &vertex_array);
-	glBindVertexArray(vertex_array);
+	auto test_model = Model::from_obj_file("../resources/test.obj");
+	VertexArray test_va(test_model.vectors, test_model.faces);
 
-	GLuint vertex_buffer;
-	GLuint index_buffer;
-	GLuint buffers[2];
-	glGenBuffers(2, buffers);
-	vertex_buffer = buffers[0];
-	index_buffer = buffers[1];
-	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof vertices, vertices, GL_STATIC_READ);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof indices, indices, GL_STATIC_READ);
-
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+	auto smiley_model = Model::from_obj_file("../resources/smiley.obj");
+//	for (auto &v: smiley_model.vectors) {
+//		v[2] = v[2] / 10;
+//	}
+	VertexArray smiley_va(smiley_model.vectors, smiley_model.faces);
 
 	auto vertex_shader = compile_shader("../src/TriangleVertexShader.glsl", GL_VERTEX_SHADER);
 	auto fragment_shader = compile_shader("../src/TriangleFragmentShader.glsl", GL_FRAGMENT_SHADER);
@@ -116,8 +133,25 @@ int main() {
 	glAttachShader(program, vertex_shader);
 	glAttachShader(program, fragment_shader);
 	glLinkProgram(program);
+	glUseProgram(program);
+	while (GLenum error = glGetError()) {
+		std::cout << "Program error: " << error << std::endl;
+	}
 
-	auto model = Model::from_obj_file("../resources/smiley.obj");
+	auto projection_loc = glGetUniformLocation(program, "u_projection");
+	assert(projection_loc != -1);
+	auto ident = glm::mat4(1.0f);
+	glm::mat4 projection = glm::perspective(glm::radians(180.0f),
+	                                        (GLfloat) width / (GLfloat) height,
+	                                        0.1f,
+	                                        100.0f);
+	auto scale = glm::scale(ident, glm::vec3(0.5f));
+	auto euler_angles = glm::vec3(glm::radians(270.0f), 0.0f, 0.0f);
+	auto quat = glm::quat(euler_angles);
+	auto rotate = glm::mat4(quat);
+	while (GLenum error = glGetError()) {
+		std::cout << "Uniform error: " << error << std::endl;
+	}
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
@@ -125,7 +159,26 @@ int main() {
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		glUseProgram(program);
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+		if (show_test) {
+			glFrontFace(GL_CCW);
+			glUniformMatrix4fv(projection_loc, 1, GL_FALSE, &glm::identity<glm::mat4>()[0][0]);
+			glBindVertexArray(test_va.vertex_array);
+			glDrawElements(GL_TRIANGLES, test_va.num_vertices, GL_UNSIGNED_INT, nullptr);
+			while (GLenum error = glGetError()) {
+				std::cout << "Draw Error: " << error << std::endl;
+			}
+		} else {
+			glFrontFace(GL_CW);
+//			glUniformMatrix4fv(projection_loc, 1, GL_FALSE, &projection[0][0]);
+//			glUniformMatrix4fv(projection_loc, 1, GL_FALSE, glm::value_ptr(scale));
+			glUniformMatrix4fv(projection_loc, 1, GL_FALSE, glm::value_ptr(rotate * scale));
+
+			glBindVertexArray(smiley_va.vertex_array);
+			glDrawElements(GL_TRIANGLES, smiley_va.num_vertices, GL_UNSIGNED_INT, nullptr);
+			while (GLenum error = glGetError()) {
+				std::cout << "Draw Error: " << error << std::endl;
+			}
+		}
 
 		glfwSwapBuffers(window);
 	}

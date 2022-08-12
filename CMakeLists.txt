@@ -18,7 +18,7 @@ endif ()
 
 add_subdirectory(vendor/glad/src)
 
-add_executable(plainscape src/main.cpp src/Model.cpp src/Model.h)
+add_executable(plainscape src/main.cpp src/Model.cpp src/Model.h src/VertexArray.cpp src/VertexArray.h)
 target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARIES} glfw Glad)
 target_include_directories(${PROJECT_NAME}
         PUBLIC

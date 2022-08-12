@@ -12,27 +12,31 @@ glm::vec3 read_vertices(const std::string& s) {
 	size_t prev_pos = s.find(' ') + 1;
 	size_t pos;
 	while ((pos = s.find(' ', prev_pos)) != std::string::npos) {
-		assert(index < 3);
+		assert(index < 2);
 		vec[index] = std::stof(s.substr(prev_pos, pos - prev_pos));
 		prev_pos = pos + 1;
+		index++;
 	}
+
+	vec[2] = std::stof(s.substr(prev_pos, s.size() - prev_pos));
 
 	return vec;
 }
 
-vec3ui read_faces(const std::string& s) {
-	vec3ui vec;
+void read_faces(const std::string &s, std::vector<unsigned int> &faces) {
 	unsigned int index = 0;
 	size_t prev_pos = s.find(' ') + 1;
 	size_t pos;
 	while ((pos = s.find(' ', prev_pos)) != std::string::npos) {
 		auto slash_pos = s.find('/', prev_pos);
-		assert(index < 3);
-		vec[index] = std::stoul(s.substr(prev_pos, slash_pos - prev_pos));
+		assert(index < 2);
+		faces.push_back(std::stoul(s.substr(prev_pos, slash_pos - prev_pos)) - 1);
 		prev_pos = pos + 1;
+		index++;
 	}
 
-	return vec;
+	auto slash_pos = s.find('/', prev_pos);
+	faces.push_back(std::stoul(s.substr(prev_pos, slash_pos - prev_pos)) - 1);
 }
 
 Model Model::from_obj_file(const std::string &path) {
@@ -44,8 +48,7 @@ Model Model::from_obj_file(const std::string &path) {
 			model.vectors.push_back(vec);
 		}
 		if (line.starts_with("f ")) {
-			auto face = read_faces(line);
-			model.faces.push_back(face);
+			read_faces(line, model.faces);
 		}
 	}
 	return model;
