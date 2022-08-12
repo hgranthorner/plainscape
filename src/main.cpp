@@ -3,6 +3,7 @@
 #include <string>
 #include "glad/gl.h"
 #include "GLFW/glfw3.h"
+#include "Model.h"
 
 void error_callback(int error, const char *description) {
 	fprintf(stderr, "Error: %s\n", description);
@@ -81,7 +82,13 @@ int main() {
 	float vertices[] = {
 			-0.5f, -0.5f, 0.0f,
 			0.5f, -0.5f, 0.0f,
-			0.0f, 0.5f, 0.0f,
+			-0.5f, 0.5f, 0.0f,
+			0.5f, 0.5f, 0.0f,
+	};
+
+	unsigned int indices[] = {
+			0, 1, 2,
+			1, 2, 3,
 	};
 
 	GLuint vertex_array;
@@ -89,9 +96,15 @@ int main() {
 	glBindVertexArray(vertex_array);
 
 	GLuint vertex_buffer;
-	glGenBuffers(1, &vertex_buffer);
+	GLuint index_buffer;
+	GLuint buffers[2];
+	glGenBuffers(2, buffers);
+	vertex_buffer = buffers[0];
+	index_buffer = buffers[1];
 	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-	glBufferData(GL_ARRAY_BUFFER, 9 * sizeof(float), vertices, GL_STATIC_READ);
+	glBufferData(GL_ARRAY_BUFFER, sizeof vertices, vertices, GL_STATIC_READ);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof indices, indices, GL_STATIC_READ);
 
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
@@ -104,13 +117,15 @@ int main() {
 	glAttachShader(program, fragment_shader);
 	glLinkProgram(program);
 
+//	Model::from_obj_file("../resources/smiley.obj");
+
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 		glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		glUseProgram(program);
-		glDrawArrays(GL_TRIANGLES, 0, 3);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 
 		glfwSwapBuffers(window);
 	}

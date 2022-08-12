@@ -18,6 +18,6 @@ endif ()
 
 add_subdirectory(vendor/glad/src)
 
-add_executable(plainscape src/main.cpp)
+add_executable(plainscape src/main.cpp src/Model.cpp src/Model.h)
 target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARIES} glfw Glad)
 target_include_directories(${PROJECT_NAME} PUBLIC vendor/glfw-3.3.8/include vendor/glad/include)
