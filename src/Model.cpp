@@ -4,6 +4,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <glm.hpp>
 #include "Model.h"
 
 Model Model::from_obj_file(const std::string &path) {

@@ -20,4 +20,13 @@ add_subdirectory(vendor/glad/src)
 
 add_executable(plainscape src/main.cpp src/Model.cpp src/Model.h)
 target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARIES} glfw Glad)
-target_include_directories(${PROJECT_NAME} PUBLIC vendor/glfw-3.3.8/include vendor/glad/include)
+target_include_directories(${PROJECT_NAME}
+        PUBLIC
+        vendor/glfw-3.3.8/include
+        vendor/glad/include
+        vendor/glm-0.9.9.8/glm
+        vendor/glm-0.9.9.8/glm/detail
+        vendor/glm-0.9.9.8/glm/ext
+        vendor/glm-0.9.9.8/glm/gtc
+        vendor/glm-0.9.9.8/glm/gtx
+        vendor/glm-0.9.9.8/glm/simd)
