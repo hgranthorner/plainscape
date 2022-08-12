@@ -6,7 +6,9 @@ namespace detail
 		volatile float f = 1e10;
 
 		for(int i = 0; i < 10; ++i)
-			f *= f; // this will overflow before the for loop terminates
+//			f *= f; // this will overflow before the for loop terminates
+			// NOTE: changed from above to get rid of clang warning
+			f = f * f;
 		return f;
 	}
 
