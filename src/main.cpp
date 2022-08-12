@@ -117,7 +117,7 @@ int main() {
 	glAttachShader(program, fragment_shader);
 	glLinkProgram(program);
 
-//	Model::from_obj_file("../resources/smiley.obj");
+	auto model = Model::from_obj_file("../resources/smiley.obj");
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();

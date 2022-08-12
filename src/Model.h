@@ -7,10 +7,16 @@
 
 
 #include <string>
+#include <vector>
+#include <glm/vec3.hpp>
+
+typedef glm::vec<3, unsigned int, glm::defaultp> vec3ui;
 
 class Model {
-//public:
-//	std::vector<
+public:
+	std::vector<glm::vec3> vectors;
+	std::vector<glm::vec3> vector_normals;
+	std::vector<vec3ui> faces;
 public:
 	static Model from_obj_file(const std::string &path);
 };
