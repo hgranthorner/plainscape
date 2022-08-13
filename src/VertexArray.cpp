@@ -63,8 +63,8 @@ VertexArray::VertexArray(std::vector<float> vertices, std::vector<unsigned int> 
 
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 4, nullptr);
-	glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, sizeof(float) * 4, (const void *)(sizeof(float) * 3));
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 6, nullptr);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 6, (const void *)(sizeof(float) * 3));
 	while (GLenum error = glGetError()) {
 		std::cout << "Binding Vertex Attrib Pointer Error: " << error << std::endl;
 	}

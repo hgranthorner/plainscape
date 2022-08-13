@@ -130,12 +130,14 @@ int main() {
 
 	auto smiley_model = Model::from_obj_file("../resources/smiley.obj");
 	std::vector<float> floats;
-	floats.reserve((smiley_model.vectors.size() * 4));
+	floats.reserve(smiley_model.vectors.size() * 6);
 	for (auto &v: smiley_model.vectors) {
 		floats.push_back(v[0]);
 		floats.push_back(v[1]);
 		floats.push_back(v[2]);
 		// double z for color
+		floats.push_back((v[0] + 1) / 2);
+		floats.push_back((v[1] + 1) / 2);
 		floats.push_back((v[2] + 1) / 2);
 	}
 	VertexArray smiley_va(floats, smiley_model.faces);
