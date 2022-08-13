@@ -16,12 +16,14 @@
 #include "Model.h"
 #include "VertexArray.h"
 
+void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);
+
+void error_callback(int error, const char *description);
+
 struct State {
 	bool show_test, enable_projection, enable_view;
 	float x_rotation, y_rotation, z_rotation, fov, z_near, z_far;
 };
-
-GLuint getProgram(GLuint vertex_shader, GLuint fragment_shader);
 
 State state{
 		.show_test =  false,
@@ -35,77 +37,8 @@ State state{
 		.z_far = 100,
 };
 
-void error_callback(int error, const char *description) {
-	fprintf(stderr, "Error: %s\n", description);
-}
 
-static void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
-	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-		glfwSetWindowShouldClose(window, GLFW_TRUE);
-
-	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
-		state.show_test = !state.show_test;
-
-	if (key == GLFW_KEY_UP && action != GLFW_RELEASE) {
-		state.y_rotation += 1;
-		std::cout << "New Y: " << state.y_rotation << std::endl;
-	}
-
-	if (key == GLFW_KEY_DOWN && action != GLFW_RELEASE) {
-		state.y_rotation -= 1;
-		std::cout << "New Y: " << state.y_rotation << std::endl;
-	}
-
-	if (key == GLFW_KEY_RIGHT && action != GLFW_RELEASE) {
-		state.x_rotation += 1;
-		std::cout << "New X: " << state.x_rotation << std::endl;
-	}
-
-	if (key == GLFW_KEY_LEFT && action != GLFW_RELEASE) {
-		state.x_rotation -= 1;
-		std::cout << "New X: " << state.x_rotation << std::endl;
-	}
-
-	if (key == GLFW_KEY_PAGE_UP && action != GLFW_RELEASE) {
-		state.z_rotation += 1;
-		std::cout << "New Z: " << state.z_rotation << std::endl;
-	}
-
-	if (key == GLFW_KEY_PAGE_DOWN && action != GLFW_RELEASE) {
-		state.z_rotation -= 1;
-		std::cout << "New Z: " << state.z_rotation << std::endl;
-	}
-
-	if (key == GLFW_KEY_Q && action != GLFW_RELEASE) {
-		state.z_near += 0.1;
-		std::cout << "New Z Near: " << state.z_near << std::endl;
-	}
-
-	if (key == GLFW_KEY_A && action != GLFW_RELEASE) {
-		state.z_near -= 0.1;
-		std::cout << "New Z Near: " << state.z_near << std::endl;
-	}
-
-	if (key == GLFW_KEY_Z && action == GLFW_PRESS) {
-		state.enable_projection = !state.enable_projection;
-		std::cout << "New Projection Status: " << state.enable_projection << std::endl;
-	}
-
-	if (key == GLFW_KEY_X && action == GLFW_PRESS) {
-		state.enable_view = !state.enable_view;
-		std::cout << "New View Status: " << state.enable_view << std::endl;
-	}
-
-	if (key == GLFW_KEY_W && action != GLFW_RELEASE) {
-		state.z_far += 0.1;
-		std::cout << "New Z Far: " << state.z_far << std::endl;
-	}
-
-	if (key == GLFW_KEY_S && action != GLFW_RELEASE) {
-		state.z_far -= 0.1;
-		std::cout << "New Z Far: " << state.z_far << std::endl;
-	}
-}
+GLuint getProgram(GLuint vertex_shader, GLuint fragment_shader);
 
 std::optional<std::tuple<int, int>> init_opengl(GLFWwindow **window) {
 	if (!glfwInit()) {
@@ -196,13 +129,23 @@ int main() {
 	VertexArray test_va(test_model.vectors, test_model.faces);
 
 	auto smiley_model = Model::from_obj_file("../resources/smiley.obj");
-	VertexArray smiley_va(smiley_model.vectors, smiley_model.faces);
+	std::vector<float> floats;
+	floats.reserve((smiley_model.vectors.size() * 4));
+	for (auto &v: smiley_model.vectors) {
+		floats.push_back(v[0]);
+		floats.push_back(v[1]);
+		floats.push_back(v[2]);
+		// double z for color
+		floats.push_back((v[2] + 1) / 2);
+	}
+	VertexArray smiley_va(floats, smiley_model.faces);
 
 	auto vertex_shader = compile_shader("../src/TriangleVertexShader.glsl", GL_VERTEX_SHADER);
 	auto vertex_shader_with_color = compile_shader("../src/TriangleVertexShaderWithColor.glsl", GL_VERTEX_SHADER);
 	auto fragment_shader = compile_shader("../src/TriangleFragmentShader.glsl", GL_FRAGMENT_SHADER);
 
-	GLuint program = getProgram(vertex_shader, fragment_shader);
+	GLuint program_no_color = getProgram(vertex_shader, fragment_shader);
+	GLuint program = getProgram(vertex_shader_with_color, fragment_shader);
 	glUseProgram(program);
 	while (GLenum error = glGetError()) {
 		std::cout << "Program error: " << error << std::endl;
@@ -256,6 +199,7 @@ int main() {
 			glUniformMatrix4fv(projection_loc, 1, GL_FALSE, glm::value_ptr(mvp));
 
 			glBindVertexArray(smiley_va.vertex_array);
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, smiley_va.index_buffer);
 			glDrawElements(GL_TRIANGLES, smiley_va.num_vertices, GL_UNSIGNED_INT, nullptr);
 			while (GLenum error = glGetError()) {
 				std::cout << "Draw Error: " << error << std::endl;
@@ -278,3 +222,74 @@ GLuint getProgram(GLuint vertex_shader, GLuint fragment_shader) {
 	return program;
 }
 
+void error_callback(int error, const char *description) {
+	fprintf(stderr, "Error: %s\n", description);
+}
+
+void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
+	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+		glfwSetWindowShouldClose(window, GLFW_TRUE);
+
+	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
+		state.show_test = !state.show_test;
+
+	if (key == GLFW_KEY_UP && action != GLFW_RELEASE) {
+		state.y_rotation += 1;
+		std::cout << "New Y: " << state.y_rotation << std::endl;
+	}
+
+	if (key == GLFW_KEY_DOWN && action != GLFW_RELEASE) {
+		state.y_rotation -= 1;
+		std::cout << "New Y: " << state.y_rotation << std::endl;
+	}
+
+	if (key == GLFW_KEY_RIGHT && action != GLFW_RELEASE) {
+		state.x_rotation += 1;
+		std::cout << "New X: " << state.x_rotation << std::endl;
+	}
+
+	if (key == GLFW_KEY_LEFT && action != GLFW_RELEASE) {
+		state.x_rotation -= 1;
+		std::cout << "New X: " << state.x_rotation << std::endl;
+	}
+
+	if (key == GLFW_KEY_PAGE_UP && action != GLFW_RELEASE) {
+		state.z_rotation += 1;
+		std::cout << "New Z: " << state.z_rotation << std::endl;
+	}
+
+	if (key == GLFW_KEY_PAGE_DOWN && action != GLFW_RELEASE) {
+		state.z_rotation -= 1;
+		std::cout << "New Z: " << state.z_rotation << std::endl;
+	}
+
+	if (key == GLFW_KEY_Q && action != GLFW_RELEASE) {
+		state.z_near += 0.1;
+		std::cout << "New Z Near: " << state.z_near << std::endl;
+	}
+
+	if (key == GLFW_KEY_A && action != GLFW_RELEASE) {
+		state.z_near -= 0.1;
+		std::cout << "New Z Near: " << state.z_near << std::endl;
+	}
+
+	if (key == GLFW_KEY_Z && action == GLFW_PRESS) {
+		state.enable_projection = !state.enable_projection;
+		std::cout << "New Projection Status: " << state.enable_projection << std::endl;
+	}
+
+	if (key == GLFW_KEY_X && action == GLFW_PRESS) {
+		state.enable_view = !state.enable_view;
+		std::cout << "New View Status: " << state.enable_view << std::endl;
+	}
+
+	if (key == GLFW_KEY_W && action != GLFW_RELEASE) {
+		state.z_far += 0.1;
+		std::cout << "New Z Far: " << state.z_far << std::endl;
+	}
+
+	if (key == GLFW_KEY_S && action != GLFW_RELEASE) {
+		state.z_far -= 0.1;
+		std::cout << "New Z Far: " << state.z_far << std::endl;
+	}
+}

@@ -9,5 +9,5 @@ uniform mat4 u_MVP;
 void main() {
     vec4 projected = u_MVP * vec4(pos, 1.0f);
     gl_Position = projected;
-    color = vec4(in_color, in_color, in_color, 1.0);
+    color = vec4(in_color,in_color,in_color, 1.0);
 }
