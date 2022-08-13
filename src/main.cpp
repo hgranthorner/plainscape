@@ -11,6 +11,7 @@
 #include <glm/gtc/quaternion.hpp>
 #include <tuple>
 #include <optional>
+#include <functional>
 #include "glad/gl.h"
 #include "GLFW/glfw3.h"
 #include "Model.h"
@@ -22,19 +23,22 @@ void error_callback(int error, const char *description);
 
 struct State {
 	bool show_test, enable_projection, enable_view;
-	float x_rotation, y_rotation, z_rotation, fov, z_near, z_far;
+	float x_rotation, y_rotation, z_rotation, fov, z_near, z_far, trans_x, trans_y, trans_z;
 };
 
 State state{
 		.show_test =  false,
-		.enable_projection = false,
-		.enable_view = false,
+		.enable_projection = true,
+		.enable_view = true,
 		.x_rotation = 270,
 		.y_rotation = 0,
 		.z_rotation = 0,
 		.fov = 45,
 		.z_near = 0.1,
 		.z_far = 100,
+		.trans_x = 0,
+		.trans_y = 0,
+		.trans_z = 0,
 };
 
 
@@ -158,16 +162,16 @@ int main() {
 
 	while (!glfwWindowShouldClose(window)) {
 		auto ident = glm::mat4(1.0f);
-//		auto euler_angles = glm::vec3(glm::radians(270.0f), 0.0f, 0.0f);
-		auto euler_angles = glm::vec3(glm::radians(state.x_rotation), glm::radians(state.y_rotation),
+		auto euler_angles = glm::vec3(glm::radians(state.x_rotation),
+		                              glm::radians(state.y_rotation),
 		                              glm::radians(state.z_rotation));
 		auto quat = glm::quat(euler_angles);
-		glm::mat4 translation = glm::mat4(1.0f);
+		glm::mat4 translation = glm::translate(ident, glm::vec3(state.trans_x, state.trans_y, state.trans_z));
 		glm::mat4 rotate = glm::mat4(quat);
 		glm::mat4 scale = glm::scale(ident, glm::vec3(0.5f));
 		glm::mat4 model = translation * rotate * scale;
 
-		glm::mat4 projection = glm::perspective(glm::radians(45.0f),
+		glm::mat4 projection = glm::perspective(glm::radians(state.fov),
 		                                        (GLfloat) width / (GLfloat) height,
 		                                        state.z_near,
 		                                        state.z_far);
@@ -228,52 +232,49 @@ void error_callback(int error, const char *description) {
 	fprintf(stderr, "Error: %s\n", description);
 }
 
+
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
+	auto key_helper = [key](int in_key1, int in_key2, bool action_compare, float &state_value, float delta,
+	                        const std::string &s) {
+		if (key == in_key1 && action_compare) {
+			state_value += delta;
+			std::cout << s << state_value << std::endl;
+		}
+		if (key == in_key2 && action_compare) {
+			state_value -= delta;
+			std::cout << s << state_value << std::endl;
+		}
+	};
+
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, GLFW_TRUE);
 
 	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
 		state.show_test = !state.show_test;
 
-	if (key == GLFW_KEY_UP && action != GLFW_RELEASE) {
-		state.y_rotation += 1;
-		std::cout << "New Y: " << state.y_rotation << std::endl;
-	}
+	key_helper(GLFW_KEY_UP, GLFW_KEY_DOWN,
+						 action != GLFW_RELEASE,
+	           state.y_rotation, 1, "New Y: ");
 
-	if (key == GLFW_KEY_DOWN && action != GLFW_RELEASE) {
-		state.y_rotation -= 1;
-		std::cout << "New Y: " << state.y_rotation << std::endl;
-	}
+	key_helper(GLFW_KEY_RIGHT, GLFW_KEY_LEFT,
+						 action != GLFW_RELEASE,
+	           state.x_rotation, 1, "New X: ");
 
-	if (key == GLFW_KEY_RIGHT && action != GLFW_RELEASE) {
-		state.x_rotation += 1;
-		std::cout << "New X: " << state.x_rotation << std::endl;
-	}
+	key_helper(GLFW_KEY_PAGE_UP, GLFW_KEY_PAGE_DOWN,
+	           action != GLFW_RELEASE,
+	           state.z_rotation, 1, "New Z: ");
 
-	if (key == GLFW_KEY_LEFT && action != GLFW_RELEASE) {
-		state.x_rotation -= 1;
-		std::cout << "New X: " << state.x_rotation << std::endl;
-	}
+	key_helper(GLFW_KEY_Q, GLFW_KEY_A,
+	           action != GLFW_RELEASE,
+	           state.z_near, 0.1, "New Z Near: ");
 
-	if (key == GLFW_KEY_PAGE_UP && action != GLFW_RELEASE) {
-		state.z_rotation += 1;
-		std::cout << "New Z: " << state.z_rotation << std::endl;
-	}
+	key_helper(GLFW_KEY_W, GLFW_KEY_S,
+	           action != GLFW_RELEASE,
+	           state.z_far, 0.1, "New Z Far: ");
 
-	if (key == GLFW_KEY_PAGE_DOWN && action != GLFW_RELEASE) {
-		state.z_rotation -= 1;
-		std::cout << "New Z: " << state.z_rotation << std::endl;
-	}
-
-	if (key == GLFW_KEY_Q && action != GLFW_RELEASE) {
-		state.z_near += 0.1;
-		std::cout << "New Z Near: " << state.z_near << std::endl;
-	}
-
-	if (key == GLFW_KEY_A && action != GLFW_RELEASE) {
-		state.z_near -= 0.1;
-		std::cout << "New Z Near: " << state.z_near << std::endl;
-	}
+	key_helper(GLFW_KEY_E, GLFW_KEY_D,
+	           action != GLFW_RELEASE,
+	           state.fov, 1, "New FOV: ");
 
 	if (key == GLFW_KEY_Z && action == GLFW_PRESS) {
 		state.enable_projection = !state.enable_projection;
@@ -283,15 +284,5 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
 	if (key == GLFW_KEY_X && action == GLFW_PRESS) {
 		state.enable_view = !state.enable_view;
 		std::cout << "New View Status: " << state.enable_view << std::endl;
-	}
-
-	if (key == GLFW_KEY_W && action != GLFW_RELEASE) {
-		state.z_far += 0.1;
-		std::cout << "New Z Far: " << state.z_far << std::endl;
-	}
-
-	if (key == GLFW_KEY_S && action != GLFW_RELEASE) {
-		state.z_far -= 0.1;
-		std::cout << "New Z Far: " << state.z_far << std::endl;
 	}
 }
