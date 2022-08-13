@@ -16,6 +16,7 @@ public:
 	template <unsigned int N_Vertices, unsigned int N_Indices>
 	VertexArray(float (&vertices)[N_Vertices], unsigned int (&indices)[N_Indices]);
 	VertexArray(std::vector<glm::vec3> vertices, std::vector<unsigned int> indices);
+	VertexArray(std::vector<float> vertices, std::vector<unsigned int> indices);
 
 	unsigned int vertex_array;
 	unsigned int vertex_buffer;
@@ -44,6 +45,7 @@ VertexArray::VertexArray(float (&vertices)[N_Vertices], unsigned int (&indices)[
 
 	num_vertices = sizeof indices / sizeof(indices[0]);
 }
+
 
 
 #endif //PLAINSCAPE_VERTEXARRAY_H
