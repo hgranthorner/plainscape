@@ -276,6 +276,18 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
 	           action != GLFW_RELEASE,
 	           state.fov, 1, "New FOV: ");
 
+	key_helper(GLFW_KEY_U, GLFW_KEY_J,
+	           action != GLFW_RELEASE,
+	           state.trans_y, 0.5, "New Y Translation: ");
+
+	key_helper(GLFW_KEY_Y, GLFW_KEY_I,
+	           action != GLFW_RELEASE,
+	           state.trans_x, 0.5, "New X Translation: ");
+
+	key_helper(GLFW_KEY_H, GLFW_KEY_K,
+	           action != GLFW_RELEASE,
+	           state.trans_z, 0.5, "New Z Translation: ");
+
 	if (key == GLFW_KEY_Z && action == GLFW_PRESS) {
 		state.enable_projection = !state.enable_projection;
 		std::cout << "New Projection Status: " << state.enable_projection << std::endl;
