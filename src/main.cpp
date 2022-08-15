@@ -133,18 +133,19 @@ int main() {
 	VertexArray test_va(test_model.vectors, test_model.faces);
 
 	auto smiley_model = Model::from_obj_file("../resources/smiley.obj");
-	std::vector<float> floats;
-	floats.reserve(smiley_model.vectors.size() * 6);
+	std::vector<float> smiley_vertices;
+	smiley_vertices.reserve(smiley_model.vectors.size() * 6);
 	for (auto &v: smiley_model.vectors) {
-		floats.push_back(v[0]);
-		floats.push_back(v[1]);
-		floats.push_back(v[2]);
+		smiley_vertices.push_back(v[0]);
+		smiley_vertices.push_back(v[1]);
+		smiley_vertices.push_back(v[2]);
 		// double z for color
-		floats.push_back((v[0] + 1) / 2);
-		floats.push_back((v[1] + 1) / 2);
-		floats.push_back((v[2] + 1) / 2);
+		smiley_vertices.push_back((v[0] + 1) / 2);
+		smiley_vertices.push_back((v[1] + 1) / 2);
+		smiley_vertices.push_back((v[2] + 1) / 2);
 	}
-	VertexArray smiley_va(floats, smiley_model.faces);
+
+	VertexArray smiley_va(smiley_vertices, smiley_model.faces);
 
 	auto vertex_shader = compile_shader("../src/TriangleVertexShader.glsl", GL_VERTEX_SHADER);
 	auto vertex_shader_with_color = compile_shader("../src/TriangleVertexShaderWithColor.glsl", GL_VERTEX_SHADER);

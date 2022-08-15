@@ -6,7 +6,7 @@
 #include <iostream>
 #include "Model.h"
 
-glm::vec3 read_vertices(const std::string& s) {
+glm::vec3 read_vertices(const std::string &s) {
 	glm::vec3 vec;
 	unsigned int index = 0;
 	size_t prev_pos = s.find(' ') + 1;
@@ -42,7 +42,7 @@ void read_faces(const std::string &s, std::vector<unsigned int> &faces) {
 Model Model::from_obj_file(const std::string &path) {
 	Model model;
 	std::ifstream ifs(path);
-	for (std::string line; std::getline(ifs, line); ) {
+	for (std::string line; std::getline(ifs, line);) {
 		if (line.starts_with("v ")) {
 			auto vec = read_vertices(line);
 			model.vectors.push_back(vec);
