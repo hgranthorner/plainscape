@@ -201,7 +201,7 @@ int main() {
 			}
 		} else {
 			// Blender spits out triangles the wrong way
-			glFrontFace(GL_CW);
+			glFrontFace(GL_CCW);
 
 			glUniformMatrix4fv(projection_loc, 1, GL_FALSE, glm::value_ptr(mvp));
 
@@ -261,7 +261,7 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
 						 action != GLFW_RELEASE,
 	           state.x_rotation, 1, "New X: ");
 
-	key_helper(GLFW_KEY_PAGE_UP, GLFW_KEY_PAGE_DOWN,
+	key_helper(GLFW_KEY_SEMICOLON, GLFW_KEY_APOSTROPHE,
 	           action != GLFW_RELEASE,
 	           state.z_rotation, 1, "New Z: ");
 
