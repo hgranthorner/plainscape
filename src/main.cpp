@@ -2,7 +2,6 @@
 
 #include <iostream>
 #include <fstream>
-#include <string>
 #include <glm/glm.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/ext/matrix_clip_space.hpp>
@@ -16,10 +15,13 @@
 #include "GLFW/glfw3.h"
 #include "Model.h"
 #include "VertexArray.h"
+#include "imgui.h"
+#include "imgui_impl_opengl3.h"
+#include "imgui_impl_glfw.h"
 
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);
 
-void error_callback(int error, const char *description);
+void error_callback([[maybe_unused]] int error, const char *description);
 
 struct State {
 	bool show_test, enable_projection, enable_view;
@@ -44,7 +46,7 @@ State state{
 
 GLuint getProgram(GLuint vertex_shader, GLuint fragment_shader);
 
-std::optional<std::tuple<int, int>> init_opengl(GLFWwindow **window) {
+std::optional<std::tuple<int, int>> init(GLFWwindow **window) {
 	if (!glfwInit()) {
 		std::cerr << "Failed to init glfw!" << std::endl;
 		return std::nullopt;
@@ -58,7 +60,7 @@ std::optional<std::tuple<int, int>> init_opengl(GLFWwindow **window) {
 #ifdef __APPLE__
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // uncomment this statement to fix compilation on OS X
 #endif
-	*window = glfwCreateWindow(640, 480, "Smiley", NULL, NULL);
+	*window = glfwCreateWindow(640, 480, "Smiley", nullptr, nullptr);
 	if (*window == nullptr) {
 		std::cerr << "Failed to create window!" << std::endl;
 		return std::nullopt;
@@ -82,6 +84,16 @@ std::optional<std::tuple<int, int>> init_opengl(GLFWwindow **window) {
 
 	glEnable(GL_CULL_FACE);
 
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    auto io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    ImGui::StyleColorsDark();
+
+    ImGui_ImplGlfw_InitForOpenGL(*window, true);
+    ImGui_ImplOpenGL3_Init("#version 410");
+
 	return std::make_tuple(width, height);
 }
 
@@ -91,7 +103,7 @@ GLuint compile_shader(const std::string &path, int shader_type) {
 	std::string content((std::istreambuf_iterator<char>(ifs)),
 	                    (std::istreambuf_iterator<char>()));
 	const char *content_cstr = content.c_str();
-	glShaderSource(shader, 1, &content_cstr, NULL);
+	glShaderSource(shader, 1, &content_cstr, nullptr);
 	glCompileShader(shader);
 	GLint params;
 	glGetShaderiv(shader, GL_COMPILE_STATUS, &params);
@@ -111,7 +123,7 @@ GLuint compile_shader(const std::string &path, int shader_type) {
 int main() {
 	GLFWwindow *window = nullptr;
 
-	auto dims = init_opengl(&window);
+	auto dims = init(&window);
 	if (!dims.has_value()) {
 		return 1;
 	}
@@ -127,7 +139,7 @@ int main() {
 	std::vector<unsigned int> index_vec3s = {
 			0, 1, 2
 	};
-	VertexArray va(vertex_vec3s, index_vec3s);
+//	VertexArray va(vertex_vec3s, index_vec3s);
 
 	auto test_model = Model::from_obj_file("../resources/test.obj");
 	VertexArray test_va(test_model.vectors, test_model.faces);
@@ -147,11 +159,11 @@ int main() {
 
 	VertexArray smiley_va(smiley_vertices, smiley_model.faces);
 
-	auto vertex_shader = compile_shader("../src/TriangleVertexShader.glsl", GL_VERTEX_SHADER);
+//	auto vertex_shader = compile_shader("../src/TriangleVertexShader.glsl", GL_VERTEX_SHADER);
 	auto vertex_shader_with_color = compile_shader("../src/TriangleVertexShaderWithColor.glsl", GL_VERTEX_SHADER);
 	auto fragment_shader = compile_shader("../src/TriangleFragmentShader.glsl", GL_FRAGMENT_SHADER);
 
-	GLuint program_no_color = getProgram(vertex_shader, fragment_shader);
+//	GLuint program_no_color = getProgram(vertex_shader, fragment_shader);
 	GLuint program = getProgram(vertex_shader_with_color, fragment_shader);
 	glUseProgram(program);
 	while (GLenum error = glGetError()) {
@@ -162,13 +174,23 @@ int main() {
 	assert(projection_loc != -1);
 
 	while (!glfwWindowShouldClose(window)) {
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+        ImGui::Text("Hello, world");
+        if (ImGui::Button("Save"))
+            std::cout << "save!" << std::endl;
+        char egg[] = "egg";
+        ImGui::InputText("string", egg, IM_ARRAYSIZE(egg));
+        float f = .4;
+        ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
 		auto ident = glm::mat4(1.0f);
 		auto euler_angles = glm::vec3(glm::radians(state.x_rotation),
 		                              glm::radians(state.y_rotation),
 		                              glm::radians(state.z_rotation));
 		auto quat = glm::quat(euler_angles);
 		glm::mat4 translation = glm::translate(ident, glm::vec3(state.trans_x, state.trans_y, state.trans_z));
-		glm::mat4 rotate = glm::mat4(quat);
+		auto rotate = glm::mat4(quat);
 		glm::mat4 scale = glm::scale(ident, glm::vec3(0.5f));
 		glm::mat4 model = translation * rotate * scale;
 
@@ -195,7 +217,7 @@ int main() {
 			glFrontFace(GL_CCW);
 			glUniformMatrix4fv(projection_loc, 1, GL_FALSE, &glm::identity<glm::mat4>()[0][0]);
 			glBindVertexArray(test_va.vertex_array);
-			glDrawElements(GL_TRIANGLES, test_va.num_vertices, GL_UNSIGNED_INT, nullptr);
+			glDrawElements(GL_TRIANGLES, (GLsizei) test_va.num_vertices, GL_UNSIGNED_INT, nullptr);
 			while (GLenum error = glGetError()) {
 				std::cout << "Draw Error: " << error << std::endl;
 			}
@@ -207,13 +229,15 @@ int main() {
 
 			glBindVertexArray(smiley_va.vertex_array);
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, smiley_va.index_buffer);
-			glDrawElements(GL_TRIANGLES, smiley_va.num_vertices, GL_UNSIGNED_INT, nullptr);
+			glDrawElements(GL_TRIANGLES, (GLsizei) smiley_va.num_vertices, GL_UNSIGNED_INT, nullptr);
 			while (GLenum error = glGetError()) {
 				std::cout << "Draw Error: " << error << std::endl;
 			}
 		}
 
-		glfwSwapBuffers(window);
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        glfwSwapBuffers(window);
 	}
 
 	glfwDestroyWindow(window);
@@ -229,12 +253,16 @@ GLuint getProgram(GLuint vertex_shader, GLuint fragment_shader) {
 	return program;
 }
 
-void error_callback(int error, const char *description) {
+void error_callback([[maybe_unused]] int error, const char *description) {
 	fprintf(stderr, "Error: %s\n", description);
 }
 
 
-void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
+void key_callback(GLFWwindow *window,
+                  int key,
+                  [[maybe_unused]] int scancode,
+                  int action,
+                  [[maybe_unused]] int mods) {
 	auto key_helper = [key](int in_key1, int in_key2, bool action_compare, float &state_value, float delta,
 	                        const std::string &s) {
 		if (key == in_key1 && action_compare) {
