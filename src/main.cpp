@@ -12,12 +12,12 @@
 #include <optional>
 #include <functional>
 #include "glad/gl.h"
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
 #include "GLFW/glfw3.h"
 #include "Model.h"
 #include "VertexArray.h"
-#include "imgui.h"
-#include "imgui_impl_opengl3.h"
-#include "imgui_impl_glfw.h"
 
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);
 
@@ -25,7 +25,7 @@ void error_callback([[maybe_unused]] int error, const char *description);
 
 struct State {
     bool show_test, enable_projection, enable_view;
-    float x_rotation, y_rotation, z_rotation, fov, z_near, z_far, trans_x, trans_y, trans_z;
+    float x_rotation, y_rotation, z_rotation, fov, z_near, z_far, x_translation, y_translation, z_translation;
 };
 
 State state{
@@ -38,9 +38,9 @@ State state{
         .fov = 45,
         .z_near = 0.1,
         .z_far = 100,
-        .trans_x = 0,
-        .trans_y = 0,
-        .trans_z = 0,
+        .x_translation = 0,
+        .y_translation = 0,
+        .z_translation = 0,
 };
 
 
@@ -60,7 +60,7 @@ std::optional<std::tuple<int, int>> init(GLFWwindow **window) {
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // uncomment this statement to fix compilation on OS X
 #endif
-    *window = glfwCreateWindow(640, 480, "Smiley", nullptr, nullptr);
+    *window = glfwCreateWindow(1280, 720, "Smiley", nullptr, nullptr);
     if (*window == nullptr) {
         std::cerr << "Failed to create window!" << std::endl;
         return std::nullopt;
@@ -86,14 +86,18 @@ std::optional<std::tuple<int, int>> init(GLFWwindow **window) {
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    auto io = ImGui::GetIO();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-    ImGuiStyle &style = ImGui::GetStyle();
-    style.WindowRounding = 0.0f;
 
     ImGui::StyleColorsDark();
+    ImGuiStyle &style = ImGui::GetStyle();
+    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+    {
+        style.WindowRounding = 0.0f;
+        style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+    }
 
     ImGui_ImplGlfw_InitForOpenGL(*window, true);
     ImGui_ImplOpenGL3_Init("#version 410");
@@ -176,6 +180,7 @@ int main() {
 
     auto projection_loc = glGetUniformLocation(program, "u_MVP");
     assert(projection_loc != -1);
+    ImGuiIO& io = ImGui::GetIO();
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -184,22 +189,34 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        ImGui::Text("Hello, world");
-        if (ImGui::Button("Save"))
-            std::cout << "save!" << std::endl;
-        char egg[] = "egg";
-        ImGui::InputText("string", egg, IM_ARRAYSIZE(egg));
-        float f = .4;
-        ImGui::SliderFloat("X Rotation", &state.x_rotation, 0.0f, 359.9f);
-        ImGui::SliderFloat("Y Rotation", &state.y_rotation, 0.0f, 359.9f);
-        ImGui::SliderFloat("Z Rotation", &state.z_rotation, 0.0f, 359.9f);
+        {
+            ImGui::Begin("Controls");
+
+            ImGui::Text("Hello, world");
+            if (ImGui::Button("Save"))
+                std::cout << "save!" << std::endl;
+            char egg[] = "egg";
+            ImGui::InputText("string", egg, IM_ARRAYSIZE(egg));
+            ImGui::SliderFloat("X Rotation", &state.x_rotation, 0.0f, 359.9f);
+            ImGui::SliderFloat("X Translation", &state.x_translation, -10, 10);
+            ImGui::SliderFloat("Y Rotation", &state.y_rotation, 0.0f, 359.9f);
+            ImGui::SliderFloat("Y Translation", &state.y_translation, -10, 10);
+            ImGui::SliderFloat("Z Rotation", &state.z_rotation, 0.0f, 359.9f);
+            ImGui::SliderFloat("Z Translation", &state.z_translation, -10, 10);
+            ImGui::SliderFloat("Z Near", &state.z_near, 0.1, 5);
+            ImGui::SliderFloat("Z Far", &state.z_far, 0, 150);
+            ImGui::SliderFloat("Field Of View", &state.fov, 30, 180);
+
+            ImGui::End();
+        }
 
         auto ident = glm::mat4(1.0f);
         auto euler_angles = glm::vec3(glm::radians(state.x_rotation),
                                       glm::radians(state.y_rotation),
                                       glm::radians(state.z_rotation));
         auto quat = glm::quat(euler_angles);
-        glm::mat4 translation = glm::translate(ident, glm::vec3(state.trans_x, state.trans_y, state.trans_z));
+        glm::mat4 translation = glm::translate(ident, glm::vec3(state.x_translation, state.y_translation,
+                                                                state.z_translation));
         auto rotate = glm::mat4(quat);
         glm::mat4 scale = glm::scale(ident, glm::vec3(0.5f));
         glm::mat4 model = translation * rotate * scale;
@@ -248,8 +265,16 @@ int main() {
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-        ImGui::UpdatePlatformWindows();
-        ImGui::RenderPlatformWindowsDefault();
+        // Update and Render additional Platform Windows
+        // (Platform functions may change the current OpenGL context, so we save/restore it to make it easier to paste this code elsewhere.
+        //  For this specific demo app we could also call glfwMakeContextCurrent(window) directly)
+        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+        {
+            GLFWwindow* backup_current_context = glfwGetCurrentContext();
+            ImGui::UpdatePlatformWindows();
+            ImGui::RenderPlatformWindowsDefault();
+            glfwMakeContextCurrent(backup_current_context);
+        }
 
         glfwSwapBuffers(window);
     }
@@ -277,59 +302,11 @@ void key_callback(GLFWwindow *window,
                   [[maybe_unused]] int scancode,
                   int action,
                   [[maybe_unused]] int mods) {
-    auto key_helper = [key](int in_key1, int in_key2, bool action_compare, float &state_value, float delta,
-                            const std::string &s) {
-        if (key == in_key1 && action_compare) {
-            state_value += delta;
-            std::cout << s << state_value << std::endl;
-        }
-        if (key == in_key2 && action_compare) {
-            state_value -= delta;
-            std::cout << s << state_value << std::endl;
-        }
-    };
-
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GLFW_TRUE);
 
     if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
         state.show_test = !state.show_test;
-
-    key_helper(GLFW_KEY_UP, GLFW_KEY_DOWN,
-               action != GLFW_RELEASE,
-               state.y_rotation, 1, "New Y: ");
-
-    key_helper(GLFW_KEY_RIGHT, GLFW_KEY_LEFT,
-               action != GLFW_RELEASE,
-               state.x_rotation, 1, "New X: ");
-
-    key_helper(GLFW_KEY_SEMICOLON, GLFW_KEY_APOSTROPHE,
-               action != GLFW_RELEASE,
-               state.z_rotation, 1, "New Z: ");
-
-    key_helper(GLFW_KEY_Q, GLFW_KEY_A,
-               action != GLFW_RELEASE,
-               state.z_near, 0.1, "New Z Near: ");
-
-    key_helper(GLFW_KEY_W, GLFW_KEY_S,
-               action != GLFW_RELEASE,
-               state.z_far, 0.1, "New Z Far: ");
-
-    key_helper(GLFW_KEY_E, GLFW_KEY_D,
-               action != GLFW_RELEASE,
-               state.fov, 1, "New FOV: ");
-
-    key_helper(GLFW_KEY_U, GLFW_KEY_J,
-               action != GLFW_RELEASE,
-               state.trans_y, 0.5, "New Y Translation: ");
-
-    key_helper(GLFW_KEY_Y, GLFW_KEY_I,
-               action != GLFW_RELEASE,
-               state.trans_x, 0.5, "New X Translation: ");
-
-    key_helper(GLFW_KEY_H, GLFW_KEY_K,
-               action != GLFW_RELEASE,
-               state.trans_z, 0.5, "New Z Translation: ");
 
     if (key == GLFW_KEY_Z && action == GLFW_PRESS) {
         state.enable_projection = !state.enable_projection;
