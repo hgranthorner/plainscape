@@ -1,7 +1,7 @@
 #version 410 core
 
-layout(location = 0) in vec3 pos;
-layout(location = 0) out vec4 color;
+layout (location = 0) in vec3 pos;
+layout (location = 0) out vec4 color;
 
 uniform mat4 u_MVP;
 
