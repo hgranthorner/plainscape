@@ -20,7 +20,7 @@ endif ()
 
 add_executable(plainscape src/main.cpp
         src/Model.cpp src/Model.h
-        src/VertexArray.cpp src/VertexArray.h)
+        src/VertexArray.cpp src/VertexArray.h src/Channel.cpp src/Channel.h)
 target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARIES} glfw Glad Imgui)
 target_link_libraries(Imgui glfw)
 target_include_directories(${PROJECT_NAME}
