@@ -11,6 +11,7 @@
 #include <tuple>
 #include <optional>
 #include <functional>
+#include <thread>
 #include "glad/gl.h"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -18,20 +19,24 @@
 #include "GLFW/glfw3.h"
 #include "Model.h"
 #include "VertexArray.h"
+#include "Channel.h"
 
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);
 
 void error_callback([[maybe_unused]] int error, const char *description);
 
+void render(Channel<glm::mat4>& chan);
+
 struct State {
-	bool show_test, enable_projection, enable_view;
-	float x_rotation, y_rotation, z_rotation, fov, z_near, z_far, x_translation, y_translation, z_translation;
+	bool show_test, enable_projection, enable_view, should_exit;
+	float x_rotation, y_rotation, z_rotation, fov, z_near, z_far, x_translation, y_translation, z_translation, width, height;
 };
 
 State state{
 	.show_test =  false,
 	.enable_projection = true,
 	.enable_view = true,
+	.should_exit = false,
 	.x_rotation = 270,
 	.y_rotation = 0,
 	.z_rotation = 0,
@@ -41,6 +46,8 @@ State state{
 	.x_translation = 0,
 	.y_translation = 0,
 	.z_translation = 0,
+	.width = 0,
+	.height = 0,
 };
 
 
@@ -74,7 +81,7 @@ std::optional<std::tuple<int, int>> init(GLFWwindow **window) {
 		return std::nullopt;
 	}
 
-	glfwSwapInterval(1);
+//	glfwSwapInterval(1);
 
 	glfwSetKeyCallback(*window, key_callback);
 
@@ -127,17 +134,47 @@ GLuint compile_shader(const std::string &path, int shader_type) {
 	return shader;
 }
 
+void compute(Channel<glm::mat4>& chan) {
+	while (state.width == 0 || state.height == 0) {}
+	while (!state.should_exit) {
+		auto ident = glm::mat4(1.0f);
+		auto euler_angles = glm::vec3(glm::radians(state.x_rotation),
+		                              glm::radians(state.y_rotation),
+		                              glm::radians(state.z_rotation));
+		auto quat = glm::quat(euler_angles);
+		glm::mat4 translation = glm::translate(ident, glm::vec3(state.x_translation, state.y_translation,
+		                                                        state.z_translation));
+		auto rotate = glm::mat4(quat);
+		glm::mat4 scale = glm::scale(ident, glm::vec3(0.5f));
+		glm::mat4 model = translation * rotate * scale;
+
+		glm::mat4 projection = glm::perspective(glm::radians(state.fov),
+		                                        (GLfloat) state.width / (GLfloat) state.height,
+		                                        state.z_near,
+		                                        state.z_far);
+		glm::mat4 view = glm::lookAt(
+			glm::vec3(5, 0, 0),
+			glm::vec3(0, 0, 0),
+			glm::vec3(0, 1, 0)
+		);
+
+		glm::mat4 mvp =
+			(state.enable_projection ? projection : glm::mat4(1))
+			* (state.enable_view ? view : glm::mat4(1))
+			* model;
+		chan.put(mvp);
+	}
+}
+
 int main() {
 	GLFWwindow *window = nullptr;
 
 	auto dims = init(&window);
-	if (!dims.has_value()) {
-		return 1;
-	}
 
-	int width, height;
-	std::tie(width, height) = dims.value();
+	std::tie(state.width, state.height) = dims.value();
 
+	Channel<glm::mat4> chan(state.should_exit);
+	std::thread compute_thread(compute, std::ref(chan));
 	std::vector<glm::vec3> vertex_vec3s = {
 		glm::vec3(-0.5f, -0.5f, 0.0f),
 		glm::vec3(0.5f, -0.5f, 0.0f),
@@ -207,56 +244,25 @@ int main() {
 			ImGui::End();
 		}
 
-		auto ident = glm::mat4(1.0f);
-		auto euler_angles = glm::vec3(glm::radians(state.x_rotation),
-		                              glm::radians(state.y_rotation),
-		                              glm::radians(state.z_rotation));
-		auto quat = glm::quat(euler_angles);
-		glm::mat4 translation = glm::translate(ident, glm::vec3(state.x_translation, state.y_translation,
-		                                                        state.z_translation));
-		auto rotate = glm::mat4(quat);
-		glm::mat4 scale = glm::scale(ident, glm::vec3(0.5f));
-		glm::mat4 model = translation * rotate * scale;
+		auto maybe_mvp = chan.take();
+		if (!maybe_mvp.has_value())
+			break;
 
-		glm::mat4 projection = glm::perspective(glm::radians(state.fov),
-		                                        (GLfloat) width / (GLfloat) height,
-		                                        state.z_near,
-		                                        state.z_far);
-		glm::mat4 view = glm::lookAt(
-			glm::vec3(5, 0, 0),
-			glm::vec3(0, 0, 0),
-			glm::vec3(0, 1, 0)
-		);
-
-		glm::mat4 mvp =
-			(state.enable_projection ? projection : glm::mat4(1))
-			* (state.enable_view ? view : glm::mat4(1))
-			* model;
+		auto mvp = maybe_mvp.value();
 
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		glUseProgram(program);
-		if (state.show_test) {
-			glFrontFace(GL_CCW);
-			glUniformMatrix4fv(projection_loc, 1, GL_FALSE, &glm::identity<glm::mat4>()[0][0]);
-			glBindVertexArray(test_va.vertex_array);
-			glDrawElements(GL_TRIANGLES, (GLsizei) test_va.num_vertices, GL_UNSIGNED_INT, nullptr);
-			while (GLenum error = glGetError()) {
-				std::cout << "Draw Error: " << error << std::endl;
-			}
-		} else {
-			// Blender spits out triangles the wrong way
-			glFrontFace(GL_CCW);
+		glFrontFace(GL_CCW);
 
-			glUniformMatrix4fv(projection_loc, 1, GL_FALSE, glm::value_ptr(mvp));
+		glUniformMatrix4fv(projection_loc, 1, GL_FALSE, glm::value_ptr(mvp));
 
-			glBindVertexArray(smiley_va.vertex_array);
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, smiley_va.index_buffer);
-			glDrawElements(GL_TRIANGLES, (GLsizei) smiley_va.num_vertices, GL_UNSIGNED_INT, nullptr);
-			while (GLenum error = glGetError()) {
-				std::cout << "Draw Error: " << error << std::endl;
-			}
+		glBindVertexArray(smiley_va.vertex_array);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, smiley_va.index_buffer);
+		glDrawElements(GL_TRIANGLES, (GLsizei) smiley_va.num_vertices, GL_UNSIGNED_INT, nullptr);
+		while (GLenum error = glGetError()) {
+			std::cout << "Draw Error: " << error << std::endl;
 		}
 
 		ImGui::Render();
@@ -277,9 +283,12 @@ int main() {
 		std::chrono::duration<float> elapsed_seconds = end - start;
 		elapsed = elapsed_seconds.count() * 1000;
 	}
+	state.should_exit = true;
+	compute_thread.join();
 
 	glfwDestroyWindow(window);
 	glfwTerminate();
+
 	return 0;
 }
 

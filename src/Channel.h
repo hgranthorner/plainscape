@@ -7,29 +7,38 @@
 
 #include <queue>
 #include <mutex>
+#include <optional>
 
 template<typename T>
 class Channel {
 public:
-	Channel() noexcept = default;
+	explicit Channel(bool& should_exit) : m_should_exit(should_exit) {};
 	void put(T x) noexcept;
-	void take() noexcept;
+	std::optional<T> take() noexcept;
 	bool empty() noexcept;
 private:
 	std::queue<T> m_queue;
 	std::mutex m_mutex;
+	bool& m_should_exit;
 };
 
 template<typename T>
 void Channel<T>::put(T x) noexcept {
+	while (!empty()) {
+		if (m_should_exit)
+			return;
+	}
 	m_mutex.lock();
 	m_queue.push(x);
 	m_mutex.unlock();
 }
 
 template<typename T>
-void Channel<T>::take() noexcept {
-	while (empty()) {}
+std::optional<T> Channel<T>::take() noexcept {
+	while (empty()) {
+		if (m_should_exit)
+			return std::nullopt;
+	}
 	m_mutex.lock();
 	auto x = m_queue.front();
 	m_queue.pop();
