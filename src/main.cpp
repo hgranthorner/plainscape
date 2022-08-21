@@ -181,7 +181,10 @@ int main() {
 	assert(projection_loc != -1);
 	ImGuiIO &io = ImGui::GetIO();
 
+	std::chrono::time_point<std::chrono::system_clock> start, end;
+	float elapsed = 0;
 	while (!glfwWindowShouldClose(window)) {
+		start = std::chrono::system_clock::now();
 		glfwPollEvents();
 
 		ImGui_ImplOpenGL3_NewFrame();
@@ -190,12 +193,7 @@ int main() {
 
 		{
 			ImGui::Begin("Controls");
-
-			ImGui::Text("Hello, world");
-			if (ImGui::Button("Save"))
-				std::cout << "save!" << std::endl;
-			char egg[] = "egg";
-			ImGui::InputText("string", egg, IM_ARRAYSIZE(egg));
+			ImGui::Text("%f", elapsed);
 			ImGui::SliderFloat("X Rotation", &state.x_rotation, 0.0f, 359.9f);
 			ImGui::SliderFloat("X Translation", &state.x_translation, -10, 10);
 			ImGui::SliderFloat("Y Rotation", &state.y_rotation, 0.0f, 359.9f);
@@ -275,6 +273,9 @@ int main() {
 		}
 
 		glfwSwapBuffers(window);
+		end = std::chrono::system_clock::now();
+		std::chrono::duration<float> elapsed_seconds = end - start;
+		elapsed = elapsed_seconds.count() * 1000;
 	}
 
 	glfwDestroyWindow(window);
