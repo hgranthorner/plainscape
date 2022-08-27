@@ -21,39 +21,52 @@
 #include "VertexArray.h"
 #include "Channel.h"
 
-void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
-void error_callback([[maybe_unused]] int error, const char *description);
+void error_callback([[maybe_unused]] int error, const char* description);
 
 void render(Channel<glm::mat4>& chan);
 
 struct State {
 	bool show_test, enable_projection, enable_view, should_exit;
-	float x_rotation, y_rotation, z_rotation, fov, z_near, z_far, x_translation, y_translation, z_translation, width, height;
+	float x_rotation,
+			y_rotation,
+			z_rotation,
+			fov,
+			z_near,
+			z_far,
+			x_translation,
+			y_translation,
+			z_translation,
+			width,
+			height,
+			light_x,
+			light_y,
+			light_z;
 };
 
 State state{
-	.show_test =  false,
-	.enable_projection = true,
-	.enable_view = true,
-	.should_exit = false,
-	.x_rotation = 270,
-	.y_rotation = 0,
-	.z_rotation = 0,
-	.fov = 45,
-	.z_near = 0.1,
-	.z_far = 100,
-	.x_translation = 0,
-	.y_translation = 0,
-	.z_translation = 0,
-	.width = 0,
-	.height = 0,
+		.show_test =  false,
+		.enable_projection = true,
+		.enable_view = true,
+		.should_exit = false,
+		.x_rotation = 270,
+		.y_rotation = 0,
+		.z_rotation = 0,
+		.fov = 45,
+		.z_near = 0.1,
+		.z_far = 100,
+		.x_translation = 0,
+		.y_translation = 0,
+		.z_translation = 0,
+		.width = 0,
+		.height = 0,
 };
 
 
 GLuint getProgram(GLuint vertex_shader, GLuint fragment_shader);
 
-std::optional<std::tuple<int, int>> init(GLFWwindow **window) {
+std::optional<std::tuple<int, int>> init(GLFWwindow** window) {
 	if (!glfwInit()) {
 		std::cerr << "Failed to init glfw!" << std::endl;
 		return std::nullopt;
@@ -93,13 +106,13 @@ std::optional<std::tuple<int, int>> init(GLFWwindow **window) {
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	ImGuiIO &io = ImGui::GetIO();
+	ImGuiIO& io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
 	ImGui::StyleColorsDark();
-	ImGuiStyle &style = ImGui::GetStyle();
+	ImGuiStyle& style = ImGui::GetStyle();
 	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
 		style.WindowRounding = 0.0f;
 		style.Colors[ImGuiCol_WindowBg].w = 1.0f;
@@ -111,12 +124,12 @@ std::optional<std::tuple<int, int>> init(GLFWwindow **window) {
 	return std::make_tuple(width, height);
 }
 
-GLuint compile_shader(const std::string &path, int shader_type) {
+GLuint compile_shader(const std::string& path, int shader_type) {
 	auto shader = glCreateShader(shader_type);
 	std::ifstream ifs(path);
 	std::string content((std::istreambuf_iterator<char>(ifs)),
 	                    (std::istreambuf_iterator<char>()));
-	const char *content_cstr = content.c_str();
+	const char* content_cstr = content.c_str();
 	glShaderSource(shader, 1, &content_cstr, nullptr);
 	glCompileShader(shader);
 	GLint params;
@@ -153,21 +166,21 @@ void compute(Channel<glm::mat4>& chan) {
 		                                        state.z_near,
 		                                        state.z_far);
 		glm::mat4 view = glm::lookAt(
-			glm::vec3(5, 0, 0),
-			glm::vec3(0, 0, 0),
-			glm::vec3(0, 1, 0)
+				glm::vec3(5, 0, 0),
+				glm::vec3(0, 0, 0),
+				glm::vec3(0, 1, 0)
 		);
 
 		glm::mat4 mvp =
-			(state.enable_projection ? projection : glm::mat4(1))
-			* (state.enable_view ? view : glm::mat4(1))
-			* model;
+				(state.enable_projection ? projection : glm::mat4(1))
+				* (state.enable_view ? view : glm::mat4(1))
+				* model;
 		chan.put(mvp);
 	}
 }
 
 int main() {
-	GLFWwindow *window = nullptr;
+	GLFWwindow* window = nullptr;
 
 	auto dims = init(&window);
 
@@ -176,22 +189,18 @@ int main() {
 	Channel<glm::mat4> chan(state.should_exit);
 	std::thread compute_thread(compute, std::ref(chan));
 	std::vector<glm::vec3> vertex_vec3s = {
-		glm::vec3(-0.5f, -0.5f, 0.0f),
-		glm::vec3(0.5f, -0.5f, 0.0f),
-		glm::vec3(-0.0f, 0.5f, 0.0f),
+			glm::vec3(-0.5f, -0.5f, 0.0f),
+			glm::vec3(0.5f, -0.5f, 0.0f),
+			glm::vec3(-0.0f, 0.5f, 0.0f),
 	};
 	std::vector<unsigned int> index_vec3s = {
-		0, 1, 2
+			0, 1, 2
 	};
-//	VertexArray va(vertex_vec3s, index_vec3s);
-
-	auto test_model = Model::from_obj_file("../resources/test.obj");
-	VertexArray test_va(test_model.vectors, test_model.faces);
 
 	auto smiley_model = Model::from_obj_file("../resources/smiley.obj");
 	std::vector<float> smiley_vertices;
 	smiley_vertices.reserve(smiley_model.vectors.size() * 6);
-	for (auto &v: smiley_model.vectors) {
+	for (auto& v: smiley_model.vectors) {
 		smiley_vertices.push_back(v[0]);
 		smiley_vertices.push_back(v[1]);
 		smiley_vertices.push_back(v[2]);
@@ -203,11 +212,12 @@ int main() {
 
 	VertexArray smiley_va(smiley_vertices, smiley_model.faces);
 
-//	auto vertex_shader = compile_shader("../src/TriangleVertexShader.glsl", GL_VERTEX_SHADER);
 	auto vertex_shader_with_color = compile_shader("../src/TriangleVertexShaderWithColor.glsl", GL_VERTEX_SHADER);
 	auto fragment_shader = compile_shader("../src/TriangleFragmentShader.glsl", GL_FRAGMENT_SHADER);
 
-//	GLuint program_no_color = getProgram(vertex_shader, fragment_shader);
+	auto light_color = glm::vec4(1, 1, 1, 1);
+	auto light_pos = glm::vec3(0.5, 0.5, 0.5);
+
 	GLuint program = getProgram(vertex_shader_with_color, fragment_shader);
 	glUseProgram(program);
 	while (GLenum error = glGetError()) {
@@ -216,7 +226,11 @@ int main() {
 
 	auto projection_loc = glGetUniformLocation(program, "u_MVP");
 	assert(projection_loc != -1);
-	ImGuiIO &io = ImGui::GetIO();
+//	auto light_color_loc = glGetUniformLocation(program, "u_light_color");
+//	assert(light_color_loc != -1);
+	auto light_pos_loc = glGetUniformLocation(program, "u_light_pos");
+	assert(light_pos_loc != -1);
+	ImGuiIO& io = ImGui::GetIO();
 
 	std::chrono::time_point<std::chrono::system_clock> start, end;
 	float elapsed = 0;
@@ -229,7 +243,7 @@ int main() {
 		ImGui::NewFrame();
 
 		{
-			ImGui::Begin("Controls");
+			ImGui::Begin("Smiley");
 			ImGui::Text("%f", elapsed);
 			ImGui::SliderFloat("X Rotation", &state.x_rotation, 0.0f, 359.9f);
 			ImGui::SliderFloat("X Translation", &state.x_translation, -10, 10);
@@ -240,6 +254,14 @@ int main() {
 			ImGui::SliderFloat("Z Near", &state.z_near, 0.1, 5);
 			ImGui::SliderFloat("Z Far", &state.z_far, 0, 150);
 			ImGui::SliderFloat("Field Of View", &state.fov, 30, 180);
+
+			ImGui::End();
+		}
+		{
+			ImGui::Begin("Light");
+			ImGui::SliderFloat("X", &state.light_x, -10, 10);
+			ImGui::SliderFloat("Y", &state.light_y, -10, 10);
+			ImGui::SliderFloat("Z", &state.light_z, -10, 10);
 
 			ImGui::End();
 		}
@@ -257,6 +279,8 @@ int main() {
 		glFrontFace(GL_CCW);
 
 		glUniformMatrix4fv(projection_loc, 1, GL_FALSE, glm::value_ptr(mvp));
+//		glUniform4f(light_color_loc, light_color.r, light_color.g, light_color.b, light_color.a);
+		glUniform3f(light_pos_loc, state.light_x, state.light_y, state.light_z);
 
 		glBindVertexArray(smiley_va.vertex_array);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, smiley_va.index_buffer);
@@ -272,7 +296,7 @@ int main() {
 		// (Platform functions may change the current OpenGL context, so we save/restore it to make it easier to paste this code elsewhere.
 		//  For this specific demo app we could also call glfwMakeContextCurrent(window) directly)
 		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-			GLFWwindow *backup_current_context = glfwGetCurrentContext();
+			GLFWwindow* backup_current_context = glfwGetCurrentContext();
 			ImGui::UpdatePlatformWindows();
 			ImGui::RenderPlatformWindowsDefault();
 			glfwMakeContextCurrent(backup_current_context);
@@ -300,12 +324,12 @@ GLuint getProgram(GLuint vertex_shader, GLuint fragment_shader) {
 	return program;
 }
 
-void error_callback([[maybe_unused]] int error, const char *description) {
+void error_callback([[maybe_unused]] int error, const char* description) {
 	fprintf(stderr, "Error: %s\n", description);
 }
 
 
-void key_callback(GLFWwindow *window,
+void key_callback(GLFWwindow* window,
                   int key,
                   [[maybe_unused]] int scancode,
                   int action,
